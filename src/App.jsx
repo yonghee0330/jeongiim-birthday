@@ -195,7 +195,7 @@ export default function App() {
                   <div key={card.id} style={{background:card.color,borderRadius:"22px",padding:"22px",marginBottom:"14px",boxShadow:"0 3px 16px rgba(0,0,0,.07)",position:"relative",animation:`upIn .4s ${i*.07}s ease both`}}>
                     <div style={{position:"absolute",top:"16px",right:"18px",fontSize:"22px",opacity:.35}}>{card.decor}</div>
                     <div style={{fontWeight:"700",fontSize:"15px",color:"#3D2C2C",marginBottom:"9px"}}>From. {card.name}</div>
-                    <div style={{fontSize:"14px",color:"#6B5B5B",lineHeight:"1.8"}}>{card.msg}</div>
+                    <div style={{fontSize:"14px",color:"#6B5B5B",lineHeight:"1.8"}}>{card.message}</div>
                     <div style={{fontSize:"11px",color:"#aaa",marginTop:"11px",textAlign:"right"}}>{card.date}</div>
                   </div>
                 ))}
