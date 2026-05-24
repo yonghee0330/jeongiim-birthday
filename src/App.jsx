@@ -330,15 +330,19 @@ export default function App() {
                     background: card.color,
                     borderRadius:"24px",padding:"28px",marginBottom:"16px",
                     boxShadow:"0 4px 20px rgba(0,0,0,.08)",position:"relative",
-                    animation:`upIn .45s ${i*.08}s ease both`,
                     border:"2px solid rgba(0,0,0,.04)",
+                    opacity:1,
                   }}>
-                    <div style={{position:"absolute",top:"20px",right:"22px",fontSize:"28px",opacity:.25}}>{card.decor}</div>
+                    <div style={{position:"absolute",top:"20px",right:"22px",fontSize:"28px",opacity:.2}}>{card.decor}</div>
                     <div style={{fontWeight:"800",fontSize:"18px",color:"#2C2C2C",marginBottom:"14px"}}>
                       💌 &nbsp;From. {card.name}
                     </div>
-                    <div style={{fontSize:"18px",color:"#1a1a1a",lineHeight:"1.9",whiteSpace:"pre-wrap",fontWeight:"400"}}>{card.msg}</div>
-                    <div style={{fontSize:"14px",color:"#aaa",marginTop:"16px",textAlign:"right"}}>{card.date}</div>
+                    <div style={{fontSize:"17px",color:"#222",lineHeight:"1.85",fontWeight:"400",marginBottom:"16px"}}>
+                      {(card.msg || "").split("\n").map((line, j) => (
+                        <span key={j}>{line}{j < (card.msg||"").split("\n").length - 1 && <br/>}</span>
+                      ))}
+                    </div>
+                    <div style={{fontSize:"14px",color:"#aaa",textAlign:"right"}}>{card.date}</div>
                   </div>
                 ))}
               </>
