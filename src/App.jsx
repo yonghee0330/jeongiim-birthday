@@ -337,7 +337,7 @@ export default function App() {
                     <div style={{fontWeight:"800",fontSize:"18px",color:"#2C2C2C",marginBottom:"14px"}}>
                       💌 &nbsp;From. {card.name}
                     </div>
-                    <div style={{fontSize:"18px",color:"#444",lineHeight:"1.85",whiteSpace:"pre-wrap"}}>{card.msg}</div>
+                    <div style={{fontSize:"18px",color:"#1a1a1a",lineHeight:"1.9",whiteSpace:"pre-wrap",fontWeight:"400"}}>{card.msg}</div>
                     <div style={{fontSize:"14px",color:"#aaa",marginTop:"16px",textAlign:"right"}}>{card.date}</div>
                   </div>
                 ))}
