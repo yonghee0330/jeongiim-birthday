@@ -38,7 +38,7 @@ export default function App() {
   const [photoIdx, setPhotoIdx] = useState(0);
   const [cards, setCards] = useState([]);
   const [name, setName] = useState("");
-  const [msg, setMsg] = useState("");
+  const [cardMsg, setCardMsg] = useState("");
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
   const [confetti, setConfetti] = useState(true);
@@ -62,17 +62,18 @@ export default function App() {
   }, [tab]);
 
   const submitCard = async () => {
-    if (!name.trim() || !msg.trim() || sending) return;
+    if (!name.trim() || !cardMsg.trim() || sending) return;
     setSending(true);
     try {
       await addCard({
-        name: name.trim(), msg: msg.trim(),
+        name: name.trim(),
+        message: cardMsg.trim(),
         date: new Date().toLocaleDateString("ko-KR"),
         color: CARD_COLORS[Math.floor(Math.random() * CARD_COLORS.length)],
         decor: DECORS[Math.floor(Math.random() * DECORS.length)],
         createdAt: new Date(),
       });
-      setName(""); setMsg("");
+      setName(""); setCardMsg("");
       setDone(true);
       setTimeout(() => { setDone(false); setTab("cards"); }, 2200);
     } catch (e) { console.error(e); }
@@ -338,8 +339,8 @@ export default function App() {
                       💌 &nbsp;From. {card.name}
                     </div>
                     <div style={{fontSize:"17px",color:"#222",lineHeight:"1.85",fontWeight:"400",marginBottom:"16px"}}>
-                      {(card.msg || "").split("\n").map((line, j) => (
-                        <span key={j}>{line}{j < (card.msg||"").split("\n").length - 1 && <br/>}</span>
+                      {(card.message || card.msg || "내용이 없어요").split("\n").map((line, j, arr) => (
+                        <span key={j}>{line}{j < arr.length - 1 && <br/>}</span>
                       ))}
                     </div>
                     <div style={{fontSize:"14px",color:"#aaa",textAlign:"right"}}>{card.date}</div>
@@ -379,10 +380,10 @@ export default function App() {
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
                 {TEMPLATES.map((t, i) => (
-                  <button key={i} onClick={()=>setMsg(t.text)} style={{
+                  <button key={i} onClick={()=>setCardMsg(t.text)} style={{
                     textAlign:"left",
-                    background: msg === t.text ? "#FFF0EC" : "white",
-                    border: msg === t.text ? "2.5px solid #FF6B6B" : "2.5px solid #E8D5CE",
+                    background: cardMsg === t.text ? "#FFF0EC" : "white",
+                    border: cardMsg === t.text ? "2.5px solid #FF6B6B" : "2.5px solid #E8D5CE",
                     borderRadius:"16px",padding:"18px 20px",
                     transition:"all .15s",
                   }}>
@@ -401,24 +402,24 @@ export default function App() {
               <textarea
                 placeholder="마음을 담아 써주세요&#10;(위의 예시를 눌러서 수정하셔도 됩니다)"
                 rows={6}
-                value={msg}
-                onChange={e => setMsg(e.target.value)}
+                value={cardMsg}
+                onChange={e => setCardMsg(e.target.value)}
               />
             </div>
 
             {/* 전송 버튼 */}
             <button
               onClick={submitCard}
-              disabled={!name.trim() || !msg.trim() || sending}
+              disabled={!name.trim() || !cardMsg.trim() || sending}
               style={{
                 width:"100%",border:"none",borderRadius:"20px",
                 padding:"22px",fontSize:"20px",fontWeight:"800",
                 letterSpacing:"0.5px",transition:"all .2s",
-                background: (name.trim() && msg.trim())
+                background: (name.trim() && cardMsg.trim())
                   ? "linear-gradient(135deg,#FF6B6B,#FF8E53)"
                   : "#E8D5CE",
-                color: (name.trim() && msg.trim()) ? "white" : "#aaa",
-                boxShadow: (name.trim() && msg.trim())
+                color: (name.trim() && cardMsg.trim()) ? "white" : "#aaa",
+                boxShadow: (name.trim() && cardMsg.trim())
                   ? "0 8px 24px rgba(255,107,107,.38)"
                   : "none",
               }}
