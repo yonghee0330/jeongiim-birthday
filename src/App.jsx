@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { PHOTOS } from './photos.js';
 import { addCard, subscribeCards } from './firebase.js';
 
+const YT_ID = "oQW9lY1ZAJA"; // 임영웅 - 별빛 같은 나의 사랑아
+
 const CONFETTI = Array.from({ length: 30 }, (_, i) => ({
   id: i, left: (i * 41 + 7) % 100, size: 9 + (i * 6) % 12,
   delay: (i * 0.22) % 3.5, dur: 2.8 + (i * 0.15) % 2, shape: i % 3,
@@ -42,8 +44,37 @@ export default function App() {
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
   const [confetti, setConfetti] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const playerRef = useRef(null);
   const touchRef = useRef(null);
   const touchYRef = useRef(null);
+
+  // YouTube IFrame API 로드
+  useEffect(() => {
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => {
+      playerRef.current = new window.YT.Player('yt-player', {
+        videoId: YT_ID,
+        playerVars: { autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: YT_ID, rel: 0 },
+        events: {
+          onReady: (e) => e.target.playVideo(),
+        },
+      });
+    };
+  }, []);
+
+  const toggleMute = () => {
+    if (!playerRef.current) return;
+    if (muted) {
+      playerRef.current.unMute();
+      playerRef.current.setVolume(80);
+    } else {
+      playerRef.current.mute();
+    }
+    setMuted(m => !m);
+  };
 
   useEffect(() => {
     const unsub = subscribeCards(setCards);
@@ -131,6 +162,47 @@ export default function App() {
 
       <Confetti on={confetti} />
 
+      {/* 숨겨진 유튜브 플레이어 */}
+      <div style={{position:"fixed",top:"-9999px",left:"-9999px",width:"1px",height:"1px",overflow:"hidden"}}>
+        <div id="yt-player"/>
+      </div>
+
+      {/* 상단 뮤직바 */}
+      <div style={{
+        position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",
+        width:"100%",maxWidth:"460px",zIndex:200,
+        background: muted
+          ? "linear-gradient(135deg,#f8f0ff,#fff0f5)"
+          : "linear-gradient(135deg,#FF6B6B,#FF8E53)",
+        borderBottom: muted ? "2px solid #FFD6CC" : "none",
+        padding:"10px 20px",
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        boxShadow:"0 2px 12px rgba(0,0,0,.1)",
+        transition:"background .4s",
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+          <span style={{fontSize:"20px",animation: muted ? "none" : "pulse 1.5s ease-in-out infinite"}}>🎵</span>
+          <div>
+            <div style={{fontSize:"10px",fontWeight:"700",color: muted ? "#bbb" : "rgba(255,255,255,.85)",letterSpacing:"0.5px"}}>
+              {muted ? "음악이 재생 중이에요" : "♪ 지금 재생 중"}
+            </div>
+            <div style={{fontSize:"14px",fontWeight:"800",color: muted ? "#D94F4F" : "white",lineHeight:1.2}}>
+              임영웅 · 별빛 같은 나의 사랑아
+            </div>
+          </div>
+        </div>
+        <button onClick={toggleMute} style={{
+          background: muted ? "#FF6B6B" : "rgba(255,255,255,.25)",
+          color:"white",border:"none",borderRadius:"24px",
+          padding:"8px 16px",fontSize:"14px",fontWeight:"800",
+          display:"flex",alignItems:"center",gap:"6px",
+          boxShadow: muted ? "0 3px 10px rgba(255,107,107,.4)" : "none",
+          flexShrink:0,
+        }}>
+          {muted ? <>🔊 소리 켜기</> : <>🔇 소리 끄기</>}
+        </button>
+      </div>
+
       {/* 전송 완료 팝업 */}
       {done && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}}>
@@ -146,7 +218,7 @@ export default function App() {
         </div>
       )}
 
-      <div style={{maxWidth:"460px",margin:"0 auto",minHeight:"100vh",paddingBottom:"88px"}}>
+      <div style={{maxWidth:"460px",margin:"0 auto",minHeight:"100vh",paddingBottom:"88px",paddingTop:"58px"}}>
 
         {/* ── 홈 탭 ── */}
         {tab === "home" && (
