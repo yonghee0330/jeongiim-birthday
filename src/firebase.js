@@ -14,11 +14,14 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 // 카드 저장
-export async function addCard(name, message) {
+export async function addCard({ name, msg, date, color, decor, createdAt }) {
   await addDoc(collection(db, "cards"), {
     name,
-    message,
-    createdAt: new Date()
+    message: msg,
+    date,
+    color,
+    decor,
+    createdAt
   });
 }
 
