@@ -1,98 +1,91 @@
-import { useState, useEffect, useRef } from 'react';
-import { PHOTOS } from './photos.js';
-import { addCard, subscribeCards } from './firebase.js';
-import AlbumTab from './AlbumTab.jsx';
-import StoryTab from './StoryTab.jsx';
+import { useState, useEffect, useRef } from "react";
+import { PHOTOS } from "./photos.js";
+import { HAPPINESS_QUOTES } from "./quotes.js";
+import { LIFE_CHAPTERS } from "./lifeChapters.js";
+import {
+  addCard,
+  subscribeCards,
+  subscribeAlbum,
+  subscribeStories,
+} from "./firebase.js";
+import AlbumTab from "./AlbumTab.jsx";
+import StoryTab from "./StoryTab.jsx";
 
-const YT_ID = "oQW9lY1ZAJA"; // 임영웅 - 별빛 같은 나의 사랑아
+const C = {
+  sage: "#7A9B8E",
+  sageDeep: "#5F7F72",
+  sageSoft: "#E4EDE8",
+  cream: "#F7F3EB",
+  creamDeep: "#EFE8DC",
+  rose: "#E8C4C4",
+  roseSoft: "#F6EAEA",
+  coral: "#C98B84",
+  coralDeep: "#B5746C",
+  ink: "#2F2C28",
+  muted: "#6B6560",
+  white: "#FFFcf7",
+  line: "rgba(122,155,142,.28)",
+  shadow: "0 12px 40px rgba(47,44,40,.08)",
+};
 
-const CONFETTI = Array.from({ length: 30 }, (_, i) => ({
-  id: i, left: (i * 41 + 7) % 100, size: 9 + (i * 6) % 12,
-  delay: (i * 0.22) % 3.5, dur: 2.8 + (i * 0.15) % 2, shape: i % 3,
-  color: ["#FF6B6B","#FFD166","#06D6A0","#FF8FA3","#A8DADC","#FFB347","#DCEDC1","#FF8E53"][i % 8],
-}));
-const CARD_COLORS = ["#FFF0F3","#FFFDE7","#F0FFF4","#FFF3E0","#EEF5FF","#FCE4EC"];
-const DECORS = ["🌸","💐","🌺","🌼","🎀","💝","🌹","✨","🎉","💫"];
+const CARD_COLORS = ["#F6EAEA", "#EFE8DC", "#E4EDE8", "#F3E6E0", "#EAF0EC", "#F8F0F0"];
+const DECORS = ["🌿", "🌸", "🕊️", "✨", "💮", "🍃"];
 const TEMPLATES = [
-  { label: "건강 오래오래", text: "어머니, 생신 진심으로 축하드려요!\n앞으로도 팔팔하게 오래오래 사세요! 💪" },
-  { label: "사랑합니다", text: "늘 건강하시고 행복하세요!\n사랑합니다 🌸" },
-  { label: "인생은 지금부터", text: "정임 씨 생일 축하해요!\n인생은 이제부터 시작입니다! 🚀" },
-  { label: "행복한 날만", text: "앞으로도 웃음 가득하고\n행복한 날들만 가득하길 바랍니다 😊" },
+  { label: "응원의 마음", text: "정임님, 오늘도 행복하시길 바랍니다.\n늘 따뜻한 마음 응원합니다." },
+  { label: "감사 인사", text: "덕분에 저도 하루를 더 따뜻하게 보냅니다.\n감사합니다." },
+  { label: "함께해요", text: "앞으로도 건강하고 웃음 가득한 날들만 가득하시길요." },
+  { label: "오늘 더 행복해", text: "오늘 더 행복해지라는 말씀처럼,\n저도 오늘을 소중히 살겠습니다." },
 ];
 
-function Confetti({ on }) {
-  if (!on) return null;
-  return (
-    <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:999,overflow:"hidden"}}>
-      <style>{`@keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}`}</style>
-      {CONFETTI.map(p => (
-        <div key={p.id} style={{
-          position:"absolute",left:`${p.left}%`,top:"-24px",
-          width:`${p.size}px`,height:`${p.size}px`,background:p.color,
-          borderRadius:p.shape===0?"50%":p.shape===1?"2px":"30% 70% 70% 30%",
-          animation:`fall ${p.dur}s ${p.delay}s ease-in infinite`,
-        }}/>
-      ))}
-    </div>
-  );
+const NAV = [
+  { id: "quote", label: "오늘의 행복" },
+  { id: "story", label: "인생 이야기" },
+  { id: "gallery", label: "갤러리" },
+  { id: "guestbook", label: "방명록/소통" },
+];
+
+function scrollToId(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function dayQuoteIndex() {
+  const d = new Date();
+  const key = d.getFullYear() * 400 + d.getMonth() * 40 + d.getDate();
+  return key % HAPPINESS_QUOTES.length;
 }
 
 export default function App() {
-  const [tab, setTab] = useState("home");
-  const [photoIdx, setPhotoIdx] = useState(0);
+  const [view, setView] = useState("landing"); // landing | album | story | write
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [quoteIdx, setQuoteIdx] = useState(dayQuoteIndex);
   const [cards, setCards] = useState([]);
+  const [album, setAlbum] = useState([]);
+  const [stories, setStories] = useState([]);
   const [name, setName] = useState("");
   const [cardMsg, setCardMsg] = useState("");
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
-  const [confetti, setConfetti] = useState(true);
-  const [muted, setMuted] = useState(true);
-  const playerRef = useRef(null);
-  const touchRef = useRef(null);
-  const touchYRef = useRef(null);
+  const [shareHint, setShareHint] = useState("");
+  const [scrolled, setScrolled] = useState(false);
+  const heroPhoto = PHOTOS[23] || PHOTOS[0];
 
-  // YouTube IFrame API 로드
   useEffect(() => {
-    const tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-    window.onYouTubeIframeAPIReady = () => {
-      playerRef.current = new window.YT.Player('yt-player', {
-        videoId: YT_ID,
-        playerVars: { autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: YT_ID, rel: 0 },
-        events: {
-          onReady: (e) => e.target.playVideo(),
-        },
-      });
+    const u1 = subscribeCards(setCards);
+    const u2 = subscribeAlbum(setAlbum);
+    const u3 = subscribeStories(setStories);
+    return () => {
+      u1();
+      u2();
+      u3();
     };
   }, []);
 
-  const toggleMute = () => {
-    if (!playerRef.current) return;
-    if (muted) {
-      playerRef.current.unMute();
-      playerRef.current.setVolume(80);
-    } else {
-      playerRef.current.mute();
-    }
-    setMuted(m => !m);
-  };
-
   useEffect(() => {
-    const unsub = subscribeCards(setCards);
-    return unsub;
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setConfetti(false), 7000);
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    if (tab !== "home") return;
-    const iv = setInterval(() => setPhotoIdx(p => (p + 1) % PHOTOS.length), 5000);
-    return () => clearInterval(iv);
-  }, [tab]);
 
   const submitCard = async () => {
     if (!name.trim() || !cardMsg.trim() || sending) return;
@@ -100,466 +93,717 @@ export default function App() {
     try {
       await addCard({
         name: name.trim(),
-        message: cardMsg.trim(),
+        msg: cardMsg.trim(),
         date: new Date().toLocaleDateString("ko-KR"),
         color: CARD_COLORS[Math.floor(Math.random() * CARD_COLORS.length)],
         decor: DECORS[Math.floor(Math.random() * DECORS.length)],
         createdAt: new Date(),
       });
-      setName(""); setCardMsg("");
+      setName("");
+      setCardMsg("");
       setDone(true);
-      setTimeout(() => { setDone(false); setTab("cards"); }, 2200);
-    } catch (e) { console.error(e); }
+      setTimeout(() => {
+        setDone(false);
+        setView("landing");
+        setTimeout(() => scrollToId("guestbook"), 100);
+      }, 1800);
+    } catch (e) {
+      console.error(e);
+    }
     setSending(false);
   };
 
-  const onTS = e => { touchRef.current = e.touches[0].clientX; touchYRef.current = e.touches[0].clientY; };
-  const onTE = e => {
-    if (!touchRef.current) return;
-    const dx = touchRef.current - e.changedTouches[0].clientX;
-    const dy = Math.abs((touchYRef.current||0) - e.changedTouches[0].clientY);
-    const n = PHOTOS.length;
-    if (Math.abs(dx) > 52 && Math.abs(dx) > dy)
-      setPhotoIdx(p => dx > 0 ? (p+1)%n : (p-1+n)%n);
-    touchRef.current = null;
+  const shareQuote = async () => {
+    const q = HAPPINESS_QUOTES[quoteIdx];
+    const text = `"${q.text}"\n- ${q.tag}\n유정임 | 오늘 더 행복해\n${window.location.origin}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "오늘의 행복 구절", text });
+        setShareHint("공유 창을 열었어요.");
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareHint("문구를 복사했어요. 카카오톡에 붙여넣기 하세요.");
+      }
+    } catch (_) {
+      setShareHint("공유가 취소되었거나 지원되지 않아요.");
+    }
+    setTimeout(() => setShareHint(""), 3500);
   };
 
-  const n = PHOTOS.length;
-  const photo = PHOTOS[photoIdx];
+  const galleryItems = [
+    ...album.slice(0, 8).map((p) => ({
+      key: p.id,
+      src: p.url,
+      caption: p.title || p.period || "행복한 순간",
+    })),
+    ...PHOTOS.slice(0, Math.max(0, 8 - Math.min(album.length, 8))).map((p) => ({
+      key: `static-${p.n}`,
+      src: p.src,
+      caption: p.caption,
+    })),
+  ].slice(0, 8);
+
+  if (view === "album") {
+    return (
+      <Shell onBack={() => setView("landing")}>
+        <AlbumTab />
+      </Shell>
+    );
+  }
+  if (view === "story") {
+    return (
+      <Shell onBack={() => setView("landing")}>
+        <StoryTab />
+      </Shell>
+    );
+  }
+  if (view === "write") {
+    return (
+      <Shell onBack={() => setView("landing")} title="따뜻한 한마디 남기기">
+        <WriteForm
+          name={name}
+          setName={setName}
+          cardMsg={cardMsg}
+          setCardMsg={setCardMsg}
+          sending={sending}
+          submitCard={submitCard}
+          done={done}
+        />
+      </Shell>
+    );
+  }
+
+  const quote = HAPPINESS_QUOTES[quoteIdx];
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Gothic:wght@400;700;800&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #FFF8F5; font-family: 'Nanum Gothic', sans-serif; }
-        @keyframes upIn  { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes popIn { from { opacity:0; transform:scale(0.82) }       to { opacity:1; transform:scale(1) } }
-        @keyframes fadeSlide { from { opacity:0; transform:translateX(14px) } to { opacity:1; transform:translateX(0) } }
-        @keyframes pulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.04) } }
-        .f1 { animation: upIn .55s ease both }
-        .f2 { animation: upIn .55s .18s ease both }
-        .f3 { animation: upIn .55s .36s ease both }
-        textarea, input {
-          font-family: 'Nanum Gothic', sans-serif;
-          font-size: 18px;
-          color: #2C2C2C;
-          background: white;
-          border: 2.5px solid #E8D5CE;
-          border-radius: 16px;
-          padding: 16px 18px;
-          width: 100%;
-          outline: none;
-          resize: none;
-          display: block;
-          line-height: 1.7;
-          transition: border-color .2s, box-shadow .2s;
-        }
-        textarea:focus, input:focus {
-          border-color: #FF6B6B;
-          box-shadow: 0 0 0 3px rgba(255,107,107,.12);
-        }
-        button { cursor: pointer; font-family: 'Nanum Gothic', sans-serif; -webkit-tap-highlight-color: transparent; }
-      `}</style>
+      <style>{globalCss}</style>
 
-      <Confetti on={confetti} />
-
-      {/* 숨겨진 유튜브 플레이어 */}
-      <div style={{position:"fixed",top:"-9999px",left:"-9999px",width:"1px",height:"1px",overflow:"hidden"}}>
-        <div id="yt-player"/>
-      </div>
-
-      {/* 상단 뮤직바 */}
-      <div style={{
-        position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",
-        width:"100%",maxWidth:"460px",zIndex:200,
-        background: muted
-          ? "linear-gradient(135deg,#f8f0ff,#fff0f5)"
-          : "linear-gradient(135deg,#FF6B6B,#FF8E53)",
-        borderBottom: muted ? "2px solid #FFD6CC" : "none",
-        padding:"10px 20px",
-        display:"flex",alignItems:"center",justifyContent:"space-between",
-        boxShadow:"0 2px 12px rgba(0,0,0,.1)",
-        transition:"background .4s",
-      }}>
-        <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
-          <span style={{fontSize:"20px",animation: muted ? "none" : "pulse 1.5s ease-in-out infinite"}}>🎵</span>
-          <div>
-            <div style={{fontSize:"10px",fontWeight:"700",color: muted ? "#bbb" : "rgba(255,255,255,.85)",letterSpacing:"0.5px"}}>
-              {muted ? "음악이 재생 중이에요" : "♪ 지금 재생 중"}
-            </div>
-            <div style={{fontSize:"14px",fontWeight:"800",color: muted ? "#D94F4F" : "white",lineHeight:1.2}}>
-              임영웅 · 별빛 같은 나의 사랑아
-            </div>
-          </div>
-        </div>
-        <button onClick={toggleMute} style={{
-          background: muted ? "#FF6B6B" : "rgba(255,255,255,.25)",
-          color:"white",border:"none",borderRadius:"24px",
-          padding:"8px 16px",fontSize:"14px",fontWeight:"800",
-          display:"flex",alignItems:"center",gap:"6px",
-          boxShadow: muted ? "0 3px 10px rgba(255,107,107,.4)" : "none",
-          flexShrink:0,
-        }}>
-          {muted ? <>🔊 소리 켜기</> : <>🔇 소리 끄기</>}
-        </button>
-      </div>
-
-      {/* 전송 완료 팝업 */}
       {done && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}}>
-          <div style={{background:"white",borderRadius:"32px",padding:"48px 36px",textAlign:"center",animation:"popIn .35s ease both",width:"100%",maxWidth:"320px"}}>
-            <div style={{fontSize:"64px",lineHeight:1}}>🎉</div>
-            <div style={{fontSize:"22px",fontWeight:"800",color:"#2C2C2C",marginTop:"20px",lineHeight:1.4}}>
-              카드가 전달됐어요!
-            </div>
-            <div style={{fontSize:"18px",color:"#888",marginTop:"10px",lineHeight:1.6}}>
-              정임 씨가 기뻐할 거예요 💕
-            </div>
+        <div className="overlay">
+          <div className="popup">
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🕊️</div>
+            <div className="popup-title">따뜻한 마음이 전달됐어요</div>
+            <div className="popup-sub">정임님께 전해질 거예요</div>
           </div>
         </div>
       )}
 
-      <div style={{maxWidth:"460px",margin:"0 auto",minHeight:"100vh",paddingBottom:"88px",paddingTop:"58px"}}>
+      {/* Header */}
+      <header className={`site-header ${scrolled ? "is-scrolled" : ""}`}>
+        <div className="header-inner">
+          <button className="logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            <span className="logo-name">유정임</span>
+            <span className="logo-sep">|</span>
+            <span className="logo-tag">오늘 더 행복해</span>
+          </button>
 
-        {/* ── 홈 탭 ── */}
-        {tab === "home" && (
-          <div>
-            {/* 헤더 히어로 */}
-            <div style={{background:"linear-gradient(160deg,#FFF0EC 0%,#FFF8E8 60%,#F0FFF8 100%)",padding:"52px 28px 32px",textAlign:"center"}}>
-              <div className="f1" style={{
-                display:"inline-block",background:"#FF6B6B",color:"white",
-                fontSize:"15px",fontWeight:"700",padding:"8px 22px",
-                borderRadius:"30px",letterSpacing:"1px",marginBottom:"24px",
-              }}>
-                🎂 &nbsp;생신을 축하합니다
-              </div>
+          <nav className="nav-desktop">
+            {NAV.map((n) => (
+              <button key={n.id} className="nav-link" onClick={() => scrollToId(n.id)}>
+                {n.label}
+              </button>
+            ))}
+          </nav>
 
-              <div className="f2" style={{
-                fontFamily:"'Nanum Myeongjo',serif",
-                fontSize:"30px",fontWeight:"800",
-                color:"#D94F4F",lineHeight:1.5,wordBreak:"keep-all",
-                marginBottom:"20px",
-              }}>
-                날마다 행복한<br/>정임씨의 생일을<br/>축하합니다! 🎂
-              </div>
+          <button
+            className="nav-toggle"
+            aria-label="메뉴"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {menuOpen ? "닫기" : "메뉴"}
+          </button>
+        </div>
+        {menuOpen && (
+          <div className="nav-mobile">
+            {NAV.map((n) => (
+              <button
+                key={n.id}
+                className="nav-link"
+                onClick={() => {
+                  setMenuOpen(false);
+                  scrollToId(n.id);
+                }}
+              >
+                {n.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
 
-              <div className="f3" style={{
-                fontSize:"19px",color:"#6B4E4E",lineHeight:"2.0",wordBreak:"keep-all",
-              }}>
-                어제보다 행복한 오늘 🌸<br/>
-                날마다 웃음 가득한 시간 😄<br/>
-                앞으로도 함께 해요! 💕
-              </div>
+      <main>
+        {/* Hero */}
+        <section className="hero" id="top">
+          <div className="hero-bg" />
+          <div className="hero-inner">
+            <div className="hero-copy fade-up">
+              <p className="eyebrow">Personal Brand · Today, Happier</p>
+              <h1>
+                매일이 새로워지는 삶,
+                <br />
+                유정임의 <em>‘오늘 더 행복해’</em>
+              </h1>
+              <p className="hero-sub">
+                따뜻한 시선과 긍정의 에너지가 머무는 공간입니다.
+              </p>
+              <button className="btn-primary" onClick={() => scrollToId("quote")}>
+                오늘의 행복 한 줄 읽기
+              </button>
             </div>
-
-            {/* 사진 슬라이드 */}
-            <div style={{padding:"24px 20px 8px"}}>
-              <div style={{fontSize:"18px",fontWeight:"700",color:"#2C2C2C",marginBottom:"14px",display:"flex",alignItems:"center",gap:"8px"}}>
-                📸 <span>정임씨의 아름다운 순간들</span>
+            <div className="hero-visual fade-up delay">
+              <div className="portrait-frame">
+                <img src={heroPhoto.src} alt="유정임" />
               </div>
+              <div className="portrait-caption">오늘도, 더 행복하게</div>
+            </div>
+          </div>
+        </section>
 
-              <div style={{position:"relative"}}>
-                <div
-                  onTouchStart={onTS} onTouchEnd={onTE}
-                  style={{borderRadius:"24px",overflow:"hidden",aspectRatio:"4/3",position:"relative",boxShadow:"0 10px 36px rgba(255,107,107,.2)",background:"#f0ece8"}}
+        {/* Daily Quote */}
+        <section className="section" id="quote">
+          <div className="section-inner">
+            <p className="section-eyebrow">Daily Inspiration</p>
+            <h2 className="section-title">오늘의 행복 구절</h2>
+            <p className="section-desc">마음에 남는 한 줄로, 오늘을 조금 더 부드럽게</p>
+
+            <article className="quote-card">
+              <div className="quote-mark">“</div>
+              <p className="quote-text">{quote.text}</p>
+              <p className="quote-author">— {quote.tag} —</p>
+              <div className="quote-actions">
+                <button
+                  className="btn-ghost"
+                  onClick={() => setQuoteIdx((i) => (i + 1) % HAPPINESS_QUOTES.length)}
                 >
-                  <img
-                    key={photoIdx} src={photo.src} alt={photo.caption}
-                    style={{width:"100%",height:"100%",objectFit:"cover",display:"block",animation:"fadeSlide .4s ease both"}}
-                  />
-                  {/* 상단 캡션 */}
-                  <div style={{position:"absolute",top:0,left:0,right:0,background:"linear-gradient(180deg,rgba(0,0,0,.65) 0%,transparent 100%)",padding:"18px 18px 40px"}}>
-                    <div style={{fontSize:"15px",fontWeight:"700",color:"white",lineHeight:1.6}}>{photo.caption}</div>
-                  </div>
-                  {/* 하단 날짜 */}
-                  <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(0deg,rgba(0,0,0,.65) 0%,transparent 100%)",padding:"40px 16px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-                    <div style={{fontSize:"13px",fontWeight:"700",color:"white",background:"rgba(0,0,0,.35)",padding:"5px 12px",borderRadius:"20px"}}>📅 {photo.date}</div>
-                    <div style={{fontSize:"13px",color:"rgba(255,255,255,.8)",background:"rgba(0,0,0,.3)",padding:"5px 12px",borderRadius:"20px"}}>{photoIdx+1} / {n}</div>
-                  </div>
-                </div>
-
-                {/* 좌우 버튼 — 크게 */}
-                {[["‹", () => setPhotoIdx(p=>(p-1+n)%n), "left"], ["›", () => setPhotoIdx(p=>(p+1)%n), "right"]].map(([icon, fn, side]) => (
-                  <button key={side} onClick={fn} style={{
-                    position:"absolute",[side]:"10px",top:"50%",transform:"translateY(-50%)",
-                    background:"rgba(255,255,255,.92)",border:"none",borderRadius:"50%",
-                    width:"48px",height:"48px",fontSize:"26px",fontWeight:"700",
-                    display:"flex",alignItems:"center",justifyContent:"center",
-                    boxShadow:"0 3px 12px rgba(0,0,0,.2)",zIndex:10,color:"#D94F4F",
-                  }}>{icon}</button>
-                ))}
+                  오늘의 명언 바꾸기
+                </button>
+                <button className="btn-soft" onClick={shareQuote}>
+                  카카오톡으로 공유하기
+                </button>
               </div>
-
-              {/* 인디케이터 */}
-              <div style={{display:"flex",justifyContent:"center",gap:"6px",marginTop:"14px",flexWrap:"wrap",padding:"0 12px"}}>
-                {PHOTOS.map((_,i) => (
-                  <button key={i} onClick={()=>setPhotoIdx(i)} style={{
-                    width:i===photoIdx?"24px":"8px",height:"8px",
-                    borderRadius:i===photoIdx?"4px":"50%",
-                    background:i===photoIdx?"#FF6B6B":"#F0C8C0",
-                    border:"none",padding:0,transition:"all .3s ease",flexShrink:0,
-                  }}/>
-                ))}
-              </div>
-            </div>
-
-            {/* 능력치 카드 3개 */}
-            <div style={{display:"flex",gap:"10px",padding:"20px 20px 4px"}}>
-              {[["💪","팔팔함","MAX"],["😄","행복지수","999%"],["🌿","건강나이","25세"]].map(([e,l,v]) => (
-                <div key={l} style={{
-                  flex:1,background:"white",borderRadius:"20px",
-                  padding:"18px 8px",textAlign:"center",
-                  boxShadow:"0 3px 16px rgba(0,0,0,.07)",
-                  border:"2px solid #FFE4D6",
-                }}>
-                  <div style={{fontSize:"32px",lineHeight:1}}>{e}</div>
-                  <div style={{fontSize:"13px",color:"#888",marginTop:"8px",fontWeight:"700"}}>{l}</div>
-                  <div style={{fontSize:"17px",fontWeight:"800",color:"#D94F4F",marginTop:"4px"}}>{v}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* 능력치 게이지 */}
-            <div style={{margin:"16px 20px",background:"white",borderRadius:"24px",padding:"24px",boxShadow:"0 3px 16px rgba(0,0,0,.07)",border:"2px solid #FFE4D6"}}>
-              <div style={{fontSize:"17px",fontWeight:"800",color:"#2C2C2C",marginBottom:"20px"}}>
-                🔬 정임 씨 능력치 과학적 분석
-              </div>
-              {[
-                {label:"팔팔함 ⚡",v:95,c:"#FF6B6B"},
-                {label:"행복 바이러스 😄",v:100,c:"#FFD166"},
-                {label:"건강 체력 💪",v:88,c:"#06D6A0"},
-                {label:"인생 즐기기 🎉",v:99,c:"#FF8E53"},
-              ].map(({label,v,c}) => (
-                <div key={label} style={{marginBottom:"16px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:"16px",fontWeight:"700",color:"#444",marginBottom:"8px"}}>
-                    <span>{label}</span>
-                    <span style={{color:c}}>{v}%</span>
-                  </div>
-                  <div style={{height:"14px",background:"#FFE8E0",borderRadius:"7px",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${v}%`,background:`linear-gradient(90deg,${c},${c}bb)`,borderRadius:"7px"}}/>
-                  </div>
-                </div>
-              ))}
-              <div style={{fontSize:"13px",color:"#bbb",textAlign:"center",marginTop:"12px"}}>
-                * 세계 공인 연구기관의 과학적 분석 결과입니다 (실제 아님)
-              </div>
-            </div>
-
-            {/* 새 기능 안내 */}
-            <div style={{padding:"4px 20px 12px",display:"flex",flexDirection:"column",gap:"12px"}}>
-              <button onClick={()=>setTab("album")} style={{
-                background:"white",color:"#D94F4F",border:"2.5px solid #FFD6CC",
-                borderRadius:"20px",padding:"20px",fontSize:"19px",fontWeight:"800",
-                boxShadow:"0 4px 16px rgba(255,107,107,.12)",width:"100%",
-              }}>
-                📸 &nbsp;추억의 사진첩 열기
-              </button>
-              <button onClick={()=>setTab("story")} style={{
-                background:"white",color:"#D94F4F",border:"2.5px solid #FFD6CC",
-                borderRadius:"20px",padding:"20px",fontSize:"19px",fontWeight:"800",
-                boxShadow:"0 4px 16px rgba(255,107,107,.12)",width:"100%",
-              }}>
-                📖 &nbsp;나의 인생 기록장
-              </button>
-            </div>
-
-            {/* 축하카드 버튼 */}
-            <div style={{padding:"4px 20px 20px"}}>
-              <button onClick={()=>setTab("write")} style={{
-                background:"linear-gradient(135deg,#FF6B6B,#FF8E53)",
-                color:"white",border:"none",borderRadius:"20px",
-                padding:"22px",fontSize:"20px",fontWeight:"800",
-                boxShadow:"0 8px 24px rgba(255,107,107,.38)",
-                width:"100%",letterSpacing:"0.5px",
-                animation:"pulse 2.5s 3s ease-in-out 3",
-              }}>
-                💌 &nbsp;축하 카드 보내기
-              </button>
-            </div>
-
-            <div style={{padding:"0 20px 24px",textAlign:"center",fontSize:"16px",color:"#bbb",lineHeight:"1.9"}}>
-              정임 씨를 사랑하는 모든 분들이<br/>응원하고 있어요 🌸
-            </div>
+              {shareHint && <p className="share-hint">{shareHint}</p>}
+            </article>
           </div>
-        )}
+        </section>
 
-        {tab === "album" && <AlbumTab />}
-        {tab === "story" && <StoryTab />}
+        {/* Life Story */}
+        <section className="section section-alt" id="story">
+          <div className="section-inner">
+            <p className="section-eyebrow">Life Story</p>
+            <h2 className="section-title">유정임의 인생 이야기</h2>
+            <p className="section-desc">지나온 길과 오늘의 마음이 이어지는 이야기</p>
 
-        {/* ── 축하카드 목록 ── */}
-        {tab === "cards" && (
-          <div style={{padding:"32px 20px"}}>
-            <div style={{fontFamily:"'Nanum Myeongjo',serif",fontSize:"26px",fontWeight:"800",textAlign:"center",color:"#2C2C2C",marginBottom:"8px"}}>
-              💌 축하 카드 모음
+            <div className="chapters">
+              {LIFE_CHAPTERS.map((ch, i) => {
+                const photo = PHOTOS.find((p) => p.n === ch.photoHint) || PHOTOS[i * 7];
+                const reverse = i % 2 === 1;
+                return (
+                  <article key={ch.id} className={`chapter ${reverse ? "is-reverse" : ""}`}>
+                    <div className="chapter-text">
+                      <span className="chapter-label">{ch.chapter}</span>
+                      <h3>{ch.title}</h3>
+                      <p>{ch.body}</p>
+                    </div>
+                    <div className="chapter-photo">
+                      <img src={photo.src} alt={ch.title} />
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-            <div style={{textAlign:"center",fontSize:"17px",color:"#888",marginBottom:"16px",lineHeight:1.7}}>
-              소중한 분들의 마음이 담겼어요
-            </div>
-            <button onClick={()=>setTab("write")} style={{
-              width:"100%",marginBottom:"24px",
-              background:"linear-gradient(135deg,#FF6B6B,#FF8E53)",
-              color:"white",border:"none",borderRadius:"18px",
-              padding:"18px",fontWeight:"800",fontSize:"18px",
-              boxShadow:"0 6px 20px rgba(255,107,107,.3)",
-            }}>✏️ 새 카드 쓰기</button>
 
-            {cards.length === 0 ? (
-              <div style={{textAlign:"center",padding:"60px 24px",color:"#bbb"}}>
-                <div style={{fontSize:"64px",marginBottom:"20px"}}>📭</div>
-                <div style={{fontSize:"18px",lineHeight:"2",color:"#999"}}>
-                  아직 카드가 없어요<br/>
-                  첫 번째 카드를 보내주세요!
+            {stories.length > 0 && (
+              <div className="saved-stories">
+                <h3 className="mini-title">남겨진 기록</h3>
+                <div className="story-list">
+                  {stories.slice(0, 4).map((s) => (
+                    <button key={s.id} className="story-chip" onClick={() => setView("story")}>
+                      <strong>{s.title}</strong>
+                      <span>{s.themeLabel}</span>
+                    </button>
+                  ))}
                 </div>
-                <button onClick={()=>setTab("write")} style={{
-                  marginTop:"28px",
-                  background:"linear-gradient(135deg,#FF6B6B,#FF8E53)",
-                  color:"white",border:"none",borderRadius:"18px",
-                  padding:"18px 36px",fontWeight:"800",fontSize:"18px",
-                  boxShadow:"0 6px 20px rgba(255,107,107,.3)",
-                }}>카드 쓰러 가기 ✏️</button>
               </div>
-            ) : (
-              <>
-                <div style={{
-                  textAlign:"center",fontSize:"16px",fontWeight:"700",
-                  color:"#D94F4F",marginBottom:"20px",
-                  background:"#FFF0EC",borderRadius:"16px",padding:"14px",
-                }}>
-                  🎉 &nbsp;총 {cards.length}개의 축하 카드가 도착했어요!
-                </div>
-                {cards.map((card, i) => (
-                  <div key={card.id} style={{
-                    background: card.color,
-                    borderRadius:"24px",padding:"28px",marginBottom:"16px",
-                    boxShadow:"0 4px 20px rgba(0,0,0,.08)",position:"relative",
-                    border:"2px solid rgba(0,0,0,.04)",
-                    opacity:1,
-                  }}>
-                    <div style={{position:"absolute",top:"20px",right:"22px",fontSize:"28px",opacity:.2}}>{card.decor}</div>
-                    <div style={{fontWeight:"800",fontSize:"18px",color:"#2C2C2C",marginBottom:"14px"}}>
-                      💌 &nbsp;From. {card.name}
-                    </div>
-                    <div style={{fontSize:"17px",color:"#222",lineHeight:"1.85",fontWeight:"400",marginBottom:"16px"}}>
-                      {(card.message || card.msg || "내용이 없어요").split("\n").map((line, j, arr) => (
-                        <span key={j}>{line}{j < arr.length - 1 && <br/>}</span>
-                      ))}
-                    </div>
-                    <div style={{fontSize:"14px",color:"#aaa",textAlign:"right"}}>{card.date}</div>
-                  </div>
-                ))}
-              </>
             )}
+
+            <div className="section-cta">
+              <button className="btn-primary" onClick={() => setView("story")}>
+                나의 인생 기록장 열기
+              </button>
+            </div>
           </div>
-        )}
+        </section>
 
-        {/* ── 카드 쓰기 ── */}
-        {tab === "write" && (
-          <div style={{padding:"32px 20px"}}>
-            <div style={{fontFamily:"'Nanum Myeongjo',serif",fontSize:"26px",fontWeight:"800",textAlign:"center",color:"#2C2C2C",marginBottom:"8px"}}>
-              ✏️ 축하 카드 쓰기
-            </div>
-            <div style={{textAlign:"center",fontSize:"17px",color:"#888",marginBottom:"32px",lineHeight:1.7}}>
-              정임 씨에게 마음을 전해드려요
-            </div>
+        {/* Gallery */}
+        <section className="section" id="gallery">
+          <div className="section-inner">
+            <p className="section-eyebrow">Gallery</p>
+            <h2 className="section-title">행복한 순간들</h2>
+            <p className="section-desc">가족과 여행, 일상의 미소가 담긴 사진들</p>
 
-            {/* 이름 입력 */}
-            <div style={{marginBottom:"24px"}}>
-              <label style={{display:"block",fontSize:"17px",fontWeight:"800",color:"#2C2C2C",marginBottom:"10px"}}>
-                내 이름 (또는 별명)
-              </label>
-              <input
-                placeholder="예) 친구 김순자, 사위 호세, 막내 손주..."
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
+            <div className="gallery-grid">
+              {galleryItems.map((g) => (
+                <figure key={g.key} className="gallery-card">
+                  <div className="gallery-img">
+                    <img src={g.src} alt={g.caption} />
+                  </div>
+                  <figcaption>{g.caption}</figcaption>
+                </figure>
+              ))}
             </div>
 
-            {/* 템플릿 먼저 */}
-            <div style={{marginBottom:"24px"}}>
-              <div style={{fontSize:"17px",fontWeight:"800",color:"#2C2C2C",marginBottom:"12px"}}>
-                💡 &nbsp;예시 문구 (누르면 바로 입력돼요)
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
-                {TEMPLATES.map((t, i) => (
-                  <button key={i} onClick={()=>setCardMsg(t.text)} style={{
-                    textAlign:"left",
-                    background: cardMsg === t.text ? "#FFF0EC" : "white",
-                    border: cardMsg === t.text ? "2.5px solid #FF6B6B" : "2.5px solid #E8D5CE",
-                    borderRadius:"16px",padding:"18px 20px",
-                    transition:"all .15s",
-                  }}>
-                    <div style={{fontSize:"14px",fontWeight:"800",color:"#D94F4F",marginBottom:"4px"}}>{t.label}</div>
-                    <div style={{fontSize:"17px",color:"#444",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{t.text}</div>
-                  </button>
-                ))}
-              </div>
+            <div className="section-cta">
+              <button className="btn-primary" onClick={() => setView("album")}>
+                추억의 사진첩 열기
+              </button>
             </div>
+          </div>
+        </section>
 
-            {/* 직접 입력 */}
-            <div style={{marginBottom:"28px"}}>
-              <label style={{display:"block",fontSize:"17px",fontWeight:"800",color:"#2C2C2C",marginBottom:"10px"}}>
-                직접 쓰기 (위 예시를 수정해도 돼요)
-              </label>
-              <textarea
-                placeholder="마음을 담아 써주세요&#10;(위의 예시를 눌러서 수정하셔도 됩니다)"
-                rows={6}
-                value={cardMsg}
-                onChange={e => setCardMsg(e.target.value)}
-              />
-            </div>
+        {/* Guestbook */}
+        <section className="section section-alt" id="guestbook">
+          <div className="section-inner">
+            <p className="section-eyebrow">Community</p>
+            <h2 className="section-title">따뜻한 한마디</h2>
+            <p className="section-desc">친구와 가족이 전하는 응원의 마음을 남겨 주세요</p>
 
-            {/* 전송 버튼 */}
-            <button
-              onClick={submitCard}
-              disabled={!name.trim() || !cardMsg.trim() || sending}
-              style={{
-                width:"100%",border:"none",borderRadius:"20px",
-                padding:"22px",fontSize:"20px",fontWeight:"800",
-                letterSpacing:"0.5px",transition:"all .2s",
-                background: (name.trim() && cardMsg.trim())
-                  ? "linear-gradient(135deg,#FF6B6B,#FF8E53)"
-                  : "#E8D5CE",
-                color: (name.trim() && cardMsg.trim()) ? "white" : "#aaa",
-                boxShadow: (name.trim() && cardMsg.trim())
-                  ? "0 8px 24px rgba(255,107,107,.38)"
-                  : "none",
-              }}
-            >
-              {sending ? "전송 중... ⏳" : "카드 보내기 💌"}
+            <button className="btn-primary" style={{ marginBottom: 28 }} onClick={() => setView("write")}>
+              한마디 남기기
             </button>
 
-            <div style={{fontSize:"15px",color:"#bbb",textAlign:"center",marginTop:"16px",lineHeight:1.7}}>
-              카드를 보내면 정임 씨가 바로 확인하실 수 있어요
-            </div>
+            {cards.length === 0 ? (
+              <div className="empty-box">
+                아직 남겨진 말이 없어요.
+                <br />
+                첫 번째 따뜻한 한마디를 남겨 주세요.
+              </div>
+            ) : (
+              <div className="guest-grid">
+                {cards.map((card) => (
+                  <article
+                    key={card.id}
+                    className="guest-card"
+                    style={{ background: card.color || C.roseSoft }}
+                  >
+                    <div className="guest-decor">{card.decor || "🌿"}</div>
+                    <div className="guest-from">From. {card.name}</div>
+                    <p className="guest-msg">
+                      {(card.message || card.msg || "").split("\n").map((line, j, arr) => (
+                        <span key={j}>
+                          {line}
+                          {j < arr.length - 1 && <br />}
+                        </span>
+                      ))}
+                    </p>
+                    <div className="guest-date">{card.date}</div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </section>
+      </main>
 
-      {/* 하단 네비게이션 */}
-      <div style={{
-        position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",
-        width:"100%",maxWidth:"460px",
-        background:"white",borderTop:"2px solid #FFE4D6",
-        display:"flex",zIndex:100,
-        boxShadow:"0 -4px 24px rgba(255,107,107,.12)",
-      }}>
-        {[
-          ["home",  "🏠", "홈"],
-          ["album", "📸", "사진첩"],
-          ["story", "📖", "기록장"],
-          ["cards", "💌", "카드"],
-        ].map(([id, ic, lbl]) => (
-          <button key={id} onClick={()=>setTab(id)} style={{
-            flex:1,padding:"12px 2px 10px",border:"none",background:"transparent",
-            fontSize:"12px",color:tab===id?"#D94F4F":"#bbb",
-            fontWeight:tab===id?"800":"400",transition:"color .2s",
-          }}>
-            <div style={{fontSize:"24px",lineHeight:1.3,marginBottom:"2px"}}>{ic}</div>
-            {lbl}
+      <footer className="site-footer">
+        <div>© 유정임 | 오늘 더 행복해. All rights reserved.</div>
+      </footer>
+    </>
+  );
+}
+
+function Shell({ children, onBack, title }) {
+  return (
+    <>
+      <style>{globalCss}</style>
+      <div className="shell">
+        <div className="shell-bar">
+          <button className="btn-ghost" onClick={onBack}>
+            ← 홈으로
           </button>
-        ))}
+          {title && <div className="shell-title">{title}</div>}
+        </div>
+        <div className="shell-body">{children}</div>
       </div>
     </>
   );
 }
+
+function WriteForm({ name, setName, cardMsg, setCardMsg, sending, submitCard, done }) {
+  return (
+    <div style={{ padding: "8px 4px 40px", maxWidth: 520, margin: "0 auto" }}>
+      {done && (
+        <div className="overlay">
+          <div className="popup">
+            <div className="popup-title">전달되었어요</div>
+          </div>
+        </div>
+      )}
+      <p style={{ fontSize: 18, color: C.muted, lineHeight: 1.7, marginBottom: 24, textAlign: "center" }}>
+        정임님께 따뜻한 응원을 전해 주세요
+      </p>
+      <label className="field-label">이름 (또는 별명)</label>
+      <input
+        className="field"
+        placeholder="예) 친구 순자, 조카 민수"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <div className="field-label" style={{ marginTop: 20 }}>
+        예시 문구 (누르면 입력돼요)
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+        {TEMPLATES.map((t, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setCardMsg(t.text)}
+            className="template-btn"
+            style={{
+              borderColor: cardMsg === t.text ? C.coral : C.line,
+              background: cardMsg === t.text ? C.roseSoft : C.white,
+            }}
+          >
+            <strong style={{ color: C.coralDeep }}>{t.label}</strong>
+            <span style={{ whiteSpace: "pre-wrap", color: C.ink }}>{t.text}</span>
+          </button>
+        ))}
+      </div>
+      <label className="field-label">직접 쓰기</label>
+      <textarea
+        className="field"
+        rows={6}
+        placeholder="마음을 담아 적어 주세요"
+        value={cardMsg}
+        onChange={(e) => setCardMsg(e.target.value)}
+      />
+      <button
+        className="btn-primary"
+        style={{ width: "100%", marginTop: 20, opacity: !name.trim() || !cardMsg.trim() || sending ? 0.55 : 1 }}
+        disabled={!name.trim() || !cardMsg.trim() || sending}
+        onClick={submitCard}
+      >
+        {sending ? "보내는 중…" : "마음 전하기"}
+      </button>
+    </div>
+  );
+}
+
+const globalCss = `
+  :root {
+    --sage: ${C.sage};
+    --sage-deep: ${C.sageDeep};
+    --sage-soft: ${C.sageSoft};
+    --cream: ${C.cream};
+    --cream-deep: ${C.creamDeep};
+    --rose: ${C.rose};
+    --rose-soft: ${C.roseSoft};
+    --coral: ${C.coral};
+    --coral-deep: ${C.coralDeep};
+    --ink: ${C.ink};
+    --muted: ${C.muted};
+    --white: ${C.white};
+    --line: ${C.line};
+    --shadow: ${C.shadow};
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 18px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  img { max-width: 100%; display: block; }
+  em { font-style: normal; color: var(--coral-deep); }
+
+  .site-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(247,243,235,.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid transparent;
+    transition: border-color .25s, box-shadow .25s;
+  }
+  .site-header.is-scrolled {
+    border-bottom-color: var(--line);
+    box-shadow: 0 4px 24px rgba(47,44,40,.06);
+  }
+  .header-inner {
+    max-width: 1080px; margin: 0 auto;
+    padding: 14px 22px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .logo {
+    border: none; background: transparent; text-align: left;
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  }
+  .logo-name {
+    font-family: 'Gowun Batang', serif;
+    font-size: 22px; font-weight: 700; color: var(--ink);
+  }
+  .logo-sep { color: var(--sage); font-size: 16px; }
+  .logo-tag {
+    font-family: 'Gowun Batang', serif;
+    font-size: 16px; color: var(--sage-deep);
+  }
+  .nav-desktop { display: none; gap: 8px; align-items: center; }
+  .nav-link {
+    border: none; background: transparent;
+    color: var(--muted); font-size: 15px; font-weight: 500;
+    padding: 10px 12px; border-radius: 999px;
+  }
+  .nav-link:hover { color: var(--sage-deep); background: var(--sage-soft); }
+  .nav-toggle {
+    border: 1.5px solid var(--line); background: var(--white);
+    color: var(--sage-deep); font-size: 15px; font-weight: 700;
+    padding: 10px 16px; border-radius: 999px;
+  }
+  .nav-mobile {
+    display: flex; flex-direction: column; padding: 8px 16px 18px;
+    border-top: 1px solid var(--line); background: rgba(247,243,235,.98);
+  }
+  @media (min-width: 860px) {
+    .nav-desktop { display: flex; }
+    .nav-toggle, .nav-mobile { display: none !important; }
+  }
+
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 48px 22px 64px;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 20%, rgba(232,196,196,.45), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 90% 10%, rgba(122,155,142,.22), transparent 50%),
+      linear-gradient(165deg, #F7F3EB 0%, #EFE8DC 45%, #E4EDE8 100%);
+  }
+  .hero-inner {
+    position: relative; max-width: 1080px; margin: 0 auto;
+    display: grid; gap: 36px; align-items: center;
+  }
+  @media (min-width: 860px) {
+    .hero { padding: 72px 32px 88px; }
+    .hero-inner { grid-template-columns: 1.1fr .9fr; gap: 48px; }
+  }
+  .eyebrow, .section-eyebrow {
+    font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--sage-deep); font-weight: 700; margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-family: 'Gowun Batang', serif;
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 700; line-height: 1.45; color: var(--ink);
+    word-break: keep-all; margin-bottom: 18px;
+  }
+  .hero-sub {
+    font-size: 19px; color: var(--muted); line-height: 1.8;
+    margin-bottom: 28px; word-break: keep-all;
+  }
+  .hero-visual { justify-self: center; width: 100%; max-width: 420px; }
+  .portrait-frame {
+    border-radius: 28px; overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 6px solid rgba(255,252,247,.9);
+    aspect-ratio: 4/5; background: var(--cream-deep);
+  }
+  .portrait-frame img { width: 100%; height: 100%; object-fit: cover; }
+  .portrait-caption {
+    text-align: center; margin-top: 14px;
+    font-family: 'Gowun Batang', serif;
+    font-size: 16px; color: var(--sage-deep);
+  }
+  .fade-up { animation: fadeUp .7s ease both; }
+  .fade-up.delay { animation-delay: .15s; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .btn-primary {
+    border: none; border-radius: 999px;
+    padding: 16px 28px; font-size: 17px; font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, var(--coral), var(--coral-deep));
+    box-shadow: 0 10px 28px rgba(181,116,108,.28);
+  }
+  .btn-soft {
+    border: none; border-radius: 999px;
+    padding: 14px 22px; font-size: 16px; font-weight: 700;
+    color: var(--sage-deep); background: var(--sage-soft);
+  }
+  .btn-ghost {
+    border: 1.5px solid var(--line); border-radius: 999px;
+    padding: 14px 22px; font-size: 16px; font-weight: 700;
+    color: var(--muted); background: transparent;
+  }
+
+  .section { padding: 72px 22px; }
+  .section-alt { background: linear-gradient(180deg, var(--cream-deep), var(--cream)); }
+  .section-inner { max-width: 960px; margin: 0 auto; }
+  .section-title {
+    font-family: 'Gowun Batang', serif;
+    font-size: clamp(26px, 4vw, 34px);
+    font-weight: 700; margin-bottom: 10px; color: var(--ink);
+  }
+  .section-desc {
+    font-size: 18px; color: var(--muted); margin-bottom: 36px; word-break: keep-all;
+  }
+  .section-cta { text-align: center; margin-top: 36px; }
+
+  .quote-card {
+    background: var(--white);
+    border-radius: 28px; padding: 40px 28px 32px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    text-align: center; position: relative;
+  }
+  .quote-mark {
+    font-family: 'Gowun Batang', serif;
+    font-size: 64px; line-height: 1; color: var(--rose);
+    position: absolute; top: 8px; left: 24px; opacity: .7;
+  }
+  .quote-text {
+    font-family: 'Gowun Batang', serif;
+    font-size: clamp(20px, 3.2vw, 26px);
+    line-height: 1.75; color: var(--ink);
+    word-break: keep-all; margin: 12px 0 22px; position: relative;
+  }
+  .quote-author {
+    font-size: 15px; color: var(--sage-deep); font-weight: 700;
+    letter-spacing: .04em; margin-bottom: 28px;
+  }
+  .quote-actions {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  }
+  .share-hint {
+    margin-top: 16px; font-size: 15px; color: var(--coral-deep); font-weight: 600;
+  }
+
+  .chapters { display: flex; flex-direction: column; gap: 40px; }
+  .chapter {
+    display: grid; gap: 22px; align-items: center;
+    background: var(--white); border-radius: 28px; padding: 22px;
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+  }
+  @media (min-width: 760px) {
+    .chapter { grid-template-columns: 1.15fr .85fr; padding: 28px; gap: 28px; }
+    .chapter.is-reverse .chapter-text { order: 2; }
+    .chapter.is-reverse .chapter-photo { order: 1; }
+  }
+  .chapter-label {
+    display: inline-block; font-size: 13px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--coral); margin-bottom: 8px;
+  }
+  .chapter-text h3 {
+    font-family: 'Gowun Batang', serif;
+    font-size: 24px; margin-bottom: 14px; line-height: 1.4;
+  }
+  .chapter-text p {
+    font-size: 17px; color: var(--muted); line-height: 1.85; word-break: keep-all;
+  }
+  .chapter-photo {
+    border-radius: 20px; overflow: hidden; aspect-ratio: 4/3;
+    background: var(--cream-deep);
+  }
+  .chapter-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+  .mini-title {
+    font-family: 'Gowun Batang', serif;
+    font-size: 20px; margin: 40px 0 14px;
+  }
+  .story-list { display: grid; gap: 10px; }
+  .story-chip {
+    text-align: left; border: 1px solid var(--line); background: var(--white);
+    border-radius: 16px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .story-chip strong { font-size: 17px; color: var(--ink); }
+  .story-chip span { font-size: 14px; color: var(--sage-deep); }
+
+  .gallery-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  @media (min-width: 720px) {
+    .gallery-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  }
+  .gallery-card {
+    background: var(--white); border-radius: 20px; overflow: hidden;
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+  }
+  .gallery-img { aspect-ratio: 1; background: var(--cream-deep); }
+  .gallery-img img { width: 100%; height: 100%; object-fit: cover; }
+  .gallery-card figcaption {
+    padding: 12px 14px 14px; font-size: 14px; color: var(--muted);
+    line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .guest-grid { display: grid; gap: 14px; }
+  @media (min-width: 720px) { .guest-grid { grid-template-columns: 1fr 1fr; } }
+  .guest-card {
+    border-radius: 22px; padding: 24px; position: relative;
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+  }
+  .guest-decor { position: absolute; top: 16px; right: 18px; font-size: 22px; opacity: .35; }
+  .guest-from { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: var(--ink); }
+  .guest-msg { font-size: 17px; line-height: 1.8; color: var(--ink); margin-bottom: 12px; }
+  .guest-date { font-size: 13px; color: var(--muted); text-align: right; }
+  .empty-box {
+    text-align: center; padding: 48px 20px; color: var(--muted);
+    background: var(--white); border-radius: 22px; border: 1px dashed var(--line);
+    line-height: 1.9;
+  }
+
+  .site-footer {
+    padding: 36px 22px 48px; text-align: center;
+    font-size: 14px; color: var(--muted);
+    border-top: 1px solid var(--line);
+    background: var(--cream-deep);
+  }
+
+  .shell { min-height: 100vh; background: var(--cream); padding-bottom: 40px; }
+  .shell-bar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(247,243,235,.92); backdrop-filter: blur(10px);
+    padding: 12px 18px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .shell-title {
+    font-family: 'Gowun Batang', serif; font-size: 18px; font-weight: 700;
+  }
+  .shell-body { max-width: 560px; margin: 0 auto; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(47,44,40,.4);
+    z-index: 900; display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .popup {
+    background: var(--white); border-radius: 28px; padding: 40px 32px;
+    text-align: center; width: 100%; max-width: 320px;
+    box-shadow: var(--shadow);
+  }
+  .popup-title { font-family: 'Gowun Batang', serif; font-size: 22px; font-weight: 700; }
+  .popup-sub { margin-top: 8px; color: var(--muted); font-size: 16px; }
+
+  .field-label {
+    display: block; font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 8px;
+  }
+  .field, textarea.field, input.field {
+    width: 100%; font-family: inherit; font-size: 17px; color: var(--ink);
+    background: var(--white); border: 1.5px solid var(--line);
+    border-radius: 16px; padding: 14px 16px; outline: none; resize: none;
+    line-height: 1.7; margin-bottom: 4px;
+  }
+  .field:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(122,155,142,.15); }
+  .template-btn {
+    text-align: left; border-radius: 16px; padding: 16px 18px;
+    border: 1.5px solid; display: flex; flex-direction: column; gap: 6px;
+    font-size: 16px; line-height: 1.6;
+  }
+`;
