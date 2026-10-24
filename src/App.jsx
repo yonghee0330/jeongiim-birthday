@@ -268,9 +268,19 @@ export default function App() {
             <p className="section-desc">마음에 남는 한 줄로, 오늘을 조금 더 부드럽게</p>
 
             <article className="quote-card">
-              <div className="quote-mark">“</div>
-              <p className="quote-text">{quote.text}</p>
-              <p className="quote-author">— {quote.tag} —</p>
+              <div
+                key={quoteIdx}
+                className="quote-hero"
+                style={{ backgroundImage: `url(${quote.image})` }}
+              >
+                <div className="quote-veil" />
+                <div className="quote-body">
+                  <div className="quote-mark">“</div>
+                  <p className="quote-text">{quote.text}</p>
+                  <p className="quote-author">— {quote.tag} —</p>
+                </div>
+                {quote.credit && <p className="quote-credit">{quote.credit}</p>}
+              </div>
               <div className="quote-actions">
                 <button
                   className="btn-ghost"
@@ -655,29 +665,66 @@ const globalCss = `
   .section-cta { text-align: center; margin-top: 36px; }
 
   .quote-card {
-    background: var(--white);
-    border-radius: 28px; padding: 40px 28px 32px;
+    background: transparent;
+    border-radius: 28px; padding: 0;
+    box-shadow: none; border: none;
+    text-align: center; position: relative;
+  }
+  .quote-hero {
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    min-height: 420px;
+    background-size: cover;
+    background-position: center;
     box-shadow: var(--shadow);
     border: 1px solid var(--line);
-    text-align: center; position: relative;
+    display: flex;
+    align-items: flex-end;
+    animation: quoteFade .55s ease both;
+  }
+  @media (min-width: 720px) {
+    .quote-hero { min-height: 480px; }
+  }
+  @keyframes quoteFade {
+    from { opacity: 0; transform: scale(1.02); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .quote-veil {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg, rgba(47,44,40,.18) 0%, rgba(47,44,40,.35) 40%, rgba(47,44,40,.72) 100%);
+    pointer-events: none;
+  }
+  .quote-body {
+    position: relative; z-index: 1;
+    width: 100%;
+    padding: 48px 28px 36px;
+    text-align: center;
   }
   .quote-mark {
     font-family: 'Gowun Batang', serif;
-    font-size: 64px; line-height: 1; color: var(--rose);
-    position: absolute; top: 8px; left: 24px; opacity: .7;
+    font-size: 56px; line-height: 1; color: rgba(255,252,247,.55);
+    margin-bottom: 4px;
   }
   .quote-text {
     font-family: 'Gowun Batang', serif;
-    font-size: clamp(20px, 3.2vw, 26px);
-    line-height: 1.75; color: var(--ink);
-    word-break: keep-all; margin: 12px 0 22px; position: relative;
+    font-size: clamp(20px, 3.2vw, 28px);
+    line-height: 1.75; color: #FFFcf7;
+    word-break: keep-all; margin: 0 0 18px;
+    text-shadow: 0 2px 18px rgba(0,0,0,.35);
   }
   .quote-author {
-    font-size: 15px; color: var(--sage-deep); font-weight: 700;
-    letter-spacing: .04em; margin-bottom: 28px;
+    font-size: 15px; color: rgba(255,252,247,.88); font-weight: 700;
+    letter-spacing: .04em; margin-bottom: 0;
+  }
+  .quote-credit {
+    position: absolute; right: 14px; bottom: 10px; z-index: 2;
+    font-size: 11px; color: rgba(255,252,247,.55); letter-spacing: .02em;
   }
   .quote-actions {
     display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    margin-top: 22px;
   }
   .share-hint {
     margin-top: 16px; font-size: 15px; color: var(--coral-deep); font-weight: 600;
