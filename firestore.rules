@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 축하 카드: 누구나 읽고 쓰기 (기존 동작 유지)
+    match /cards/{id} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // 가족 비밀번호 (읽기만 — 쓰기는 콘솔에서)
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 사진첩 · 인생 기록 · 임시저장: 로그인한 가족(익명 포함)만 쓰기
+    match /albumPhotos/{id} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+    match /lifeStories/{id} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+    match /lifeDrafts/{id} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+  }
+}

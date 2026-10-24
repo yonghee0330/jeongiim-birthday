@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { PHOTOS } from './photos.js';
 import { addCard, subscribeCards } from './firebase.js';
+import AlbumTab from './AlbumTab.jsx';
+import StoryTab from './StoryTab.jsx';
 
 const YT_ID = "oQW9lY1ZAJA"; // 임영웅 - 별빛 같은 나의 사랑아
 
@@ -344,6 +346,24 @@ export default function App() {
               </div>
             </div>
 
+            {/* 새 기능 안내 */}
+            <div style={{padding:"4px 20px 12px",display:"flex",flexDirection:"column",gap:"12px"}}>
+              <button onClick={()=>setTab("album")} style={{
+                background:"white",color:"#D94F4F",border:"2.5px solid #FFD6CC",
+                borderRadius:"20px",padding:"20px",fontSize:"19px",fontWeight:"800",
+                boxShadow:"0 4px 16px rgba(255,107,107,.12)",width:"100%",
+              }}>
+                📸 &nbsp;추억의 사진첩 열기
+              </button>
+              <button onClick={()=>setTab("story")} style={{
+                background:"white",color:"#D94F4F",border:"2.5px solid #FFD6CC",
+                borderRadius:"20px",padding:"20px",fontSize:"19px",fontWeight:"800",
+                boxShadow:"0 4px 16px rgba(255,107,107,.12)",width:"100%",
+              }}>
+                📖 &nbsp;나의 인생 기록장
+              </button>
+            </div>
+
             {/* 축하카드 버튼 */}
             <div style={{padding:"4px 20px 20px"}}>
               <button onClick={()=>setTab("write")} style={{
@@ -364,15 +384,25 @@ export default function App() {
           </div>
         )}
 
+        {tab === "album" && <AlbumTab />}
+        {tab === "story" && <StoryTab />}
+
         {/* ── 축하카드 목록 ── */}
         {tab === "cards" && (
           <div style={{padding:"32px 20px"}}>
             <div style={{fontFamily:"'Nanum Myeongjo',serif",fontSize:"26px",fontWeight:"800",textAlign:"center",color:"#2C2C2C",marginBottom:"8px"}}>
               💌 축하 카드 모음
             </div>
-            <div style={{textAlign:"center",fontSize:"17px",color:"#888",marginBottom:"28px",lineHeight:1.7}}>
+            <div style={{textAlign:"center",fontSize:"17px",color:"#888",marginBottom:"16px",lineHeight:1.7}}>
               소중한 분들의 마음이 담겼어요
             </div>
+            <button onClick={()=>setTab("write")} style={{
+              width:"100%",marginBottom:"24px",
+              background:"linear-gradient(135deg,#FF6B6B,#FF8E53)",
+              color:"white",border:"none",borderRadius:"18px",
+              padding:"18px",fontWeight:"800",fontSize:"18px",
+              boxShadow:"0 6px 20px rgba(255,107,107,.3)",
+            }}>✏️ 새 카드 쓰기</button>
 
             {cards.length === 0 ? (
               <div style={{textAlign:"center",padding:"60px 24px",color:"#bbb"}}>
@@ -516,15 +546,16 @@ export default function App() {
       }}>
         {[
           ["home",  "🏠", "홈"],
-          ["cards", "💌", "축하카드"],
-          ["write", "✏️",  "카드쓰기"],
+          ["album", "📸", "사진첩"],
+          ["story", "📖", "기록장"],
+          ["cards", "💌", "카드"],
         ].map(([id, ic, lbl]) => (
           <button key={id} onClick={()=>setTab(id)} style={{
-            flex:1,padding:"14px 4px 12px",border:"none",background:"transparent",
-            fontSize:"13px",color:tab===id?"#D94F4F":"#bbb",
+            flex:1,padding:"12px 2px 10px",border:"none",background:"transparent",
+            fontSize:"12px",color:tab===id?"#D94F4F":"#bbb",
             fontWeight:tab===id?"800":"400",transition:"color .2s",
           }}>
-            <div style={{fontSize:"26px",lineHeight:1.3,marginBottom:"3px"}}>{ic}</div>
+            <div style={{fontSize:"24px",lineHeight:1.3,marginBottom:"2px"}}>{ic}</div>
             {lbl}
           </button>
         ))}
