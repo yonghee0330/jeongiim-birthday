@@ -6,7 +6,6 @@ import {
   addCard,
   subscribeCards,
   subscribeAlbum,
-  subscribeStories,
 } from "./firebase.js";
 import AlbumTab from "./AlbumTab.jsx";
 import StoryTab from "./StoryTab.jsx";
@@ -30,18 +29,12 @@ const C = {
 
 const CARD_COLORS = ["#F6EAEA", "#EFE8DC", "#E4EDE8", "#F3E6E0", "#EAF0EC", "#F8F0F0"];
 const DECORS = ["🌿", "🌸", "🕊️", "✨", "💮", "🍃"];
-const TEMPLATES = [
-  { label: "응원의 마음", text: "정임님, 오늘도 행복하시길 바랍니다.\n늘 따뜻한 마음 응원합니다." },
-  { label: "감사 인사", text: "덕분에 저도 하루를 더 따뜻하게 보냅니다.\n감사합니다." },
-  { label: "함께해요", text: "앞으로도 건강하고 웃음 가득한 날들만 가득하시길요." },
-  { label: "오늘 더 행복해", text: "오늘 더 행복해지라는 말씀처럼,\n저도 오늘을 소중히 살겠습니다." },
-];
 
 const NAV = [
   { id: "quote", label: "오늘의 행복" },
   { id: "story", label: "인생 이야기" },
   { id: "gallery", label: "갤러리" },
-  { id: "guestbook", label: "방명록/소통" },
+  { id: "guestbook", label: "따뜻한 한마디" },
 ];
 
 function scrollToId(id) {
@@ -61,23 +54,21 @@ export default function App() {
   const [quoteIdx, setQuoteIdx] = useState(dayQuoteIndex);
   const [cards, setCards] = useState([]);
   const [album, setAlbum] = useState([]);
-  const [stories, setStories] = useState([]);
   const [name, setName] = useState("");
   const [cardMsg, setCardMsg] = useState("");
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
   const [shareHint, setShareHint] = useState("");
   const [scrolled, setScrolled] = useState(false);
+  const [zoomIdx, setZoomIdx] = useState(null);
   const heroPhoto = PHOTOS[23] || PHOTOS[0];
 
   useEffect(() => {
     const u1 = subscribeCards(setCards);
     const u2 = subscribeAlbum(setAlbum);
-    const u3 = subscribeStories(setStories);
     return () => {
       u1();
       u2();
-      u3();
     };
   }, []);
 
@@ -323,25 +314,6 @@ export default function App() {
               })}
             </div>
 
-            {stories.length > 0 && (
-              <div className="saved-stories">
-                <h3 className="mini-title">남겨진 기록</h3>
-                <div className="story-list">
-                  {stories.slice(0, 4).map((s) => (
-                    <button key={s.id} className="story-chip" onClick={() => setView("story")}>
-                      <strong>{s.title}</strong>
-                      <span>{s.themeLabel}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="section-cta">
-              <button className="btn-primary" onClick={() => setView("story")}>
-                나의 인생 기록장 열기
-              </button>
-            </div>
           </div>
         </section>
 
@@ -353,11 +325,16 @@ export default function App() {
             <p className="section-desc">가족과 여행, 일상의 미소가 담긴 사진들</p>
 
             <div className="gallery-grid">
-              {galleryItems.map((g) => (
+              {galleryItems.map((g, i) => (
                 <figure key={g.key} className="gallery-card">
-                  <div className="gallery-img">
+                  <button
+                    type="button"
+                    className="gallery-img"
+                    aria-label={`${g.caption} 크게 보기`}
+                    onClick={() => setZoomIdx(i)}
+                  >
                     <img src={g.src} alt={g.caption} />
-                  </div>
+                  </button>
                   <figcaption>{g.caption}</figcaption>
                 </figure>
               ))}
@@ -365,7 +342,7 @@ export default function App() {
 
             <div className="section-cta">
               <button className="btn-primary" onClick={() => setView("album")}>
-                추억의 사진첩 열기
+                행복한 순간 추가하기
               </button>
             </div>
           </div>
@@ -418,7 +395,73 @@ export default function App() {
       <footer className="site-footer">
         <div>© 유정임 | 오늘 더 행복해. All rights reserved.</div>
       </footer>
+
+      {zoomIdx !== null && galleryItems[zoomIdx] && (
+        <PhotoZoom
+          items={galleryItems}
+          index={zoomIdx}
+          setIndex={setZoomIdx}
+          onClose={() => setZoomIdx(null)}
+        />
+      )}
     </>
+  );
+}
+
+function PhotoZoom({ items, index, setIndex, onClose }) {
+  const touchX = useRef(null);
+  const item = items[index];
+  const n = items.length;
+  const prev = () => setIndex((index - 1 + n) % n);
+  const next = () => setIndex((index + 1) % n);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  });
+
+  return (
+    <div
+      className="zoom-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchX.current === null) return;
+        const dx = touchX.current - e.changedTouches[0].clientX;
+        if (Math.abs(dx) > 50) (dx > 0 ? next : prev)();
+        touchX.current = null;
+      }}
+    >
+      <button className="zoom-close" onClick={onClose}>✕ 닫기</button>
+      <img
+        key={index}
+        className="zoom-img"
+        src={item.src}
+        alt={item.caption}
+        onClick={(e) => e.stopPropagation()}
+      />
+      <div className="zoom-caption" onClick={(e) => e.stopPropagation()}>
+        <p>{item.caption}</p>
+        {n > 1 && (
+          <div className="zoom-nav">
+            <button onClick={prev} aria-label="이전 사진">‹ 이전</button>
+            <span>{index + 1} / {n}</span>
+            <button onClick={next} aria-label="다음 사진">다음 ›</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -455,31 +498,10 @@ function WriteForm({ name, setName, cardMsg, setCardMsg, sending, submitCard, do
       <label className="field-label">이름 (또는 별명)</label>
       <input
         className="field"
-        placeholder="예) 친구 순자, 조카 민수"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <div className="field-label" style={{ marginTop: 20 }}>
-        예시 문구 (누르면 입력돼요)
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-        {TEMPLATES.map((t, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setCardMsg(t.text)}
-            className="template-btn"
-            style={{
-              borderColor: cardMsg === t.text ? C.coral : C.line,
-              background: cardMsg === t.text ? C.roseSoft : C.white,
-            }}
-          >
-            <strong style={{ color: C.coralDeep }}>{t.label}</strong>
-            <span style={{ whiteSpace: "pre-wrap", color: C.ink }}>{t.text}</span>
-          </button>
-        ))}
-      </div>
-      <label className="field-label">직접 쓰기</label>
+      <label className="field-label" style={{ marginTop: 20 }}>전하고 싶은 말</label>
       <textarea
         className="field"
         rows={6}
@@ -782,7 +804,37 @@ const globalCss = `
     background: var(--white); border-radius: 20px; overflow: hidden;
     box-shadow: var(--shadow); border: 1px solid var(--line);
   }
-  .gallery-img { aspect-ratio: 1; background: var(--cream-deep); }
+  .gallery-img {
+    aspect-ratio: 1; background: var(--cream-deep);
+    display: block; width: 100%; border: none; padding: 0; cursor: zoom-in;
+  }
+
+  .zoom-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(20,18,16,.98);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 72px 12px 20px;
+  }
+  .zoom-close {
+    position: absolute; top: 16px; right: 16px;
+    border: none; border-radius: 999px;
+    background: rgba(255,252,247,.95); color: var(--ink);
+    font-size: 18px; font-weight: 700; padding: 12px 22px;
+  }
+  .zoom-img {
+    max-width: 100%; max-height: calc(100vh - 220px);
+    object-fit: contain; border-radius: 12px;
+    animation: quoteFade .3s ease both;
+  }
+  .zoom-caption { margin-top: 18px; text-align: center; color: #FFFcf7; width: 100%; max-width: 560px; }
+  .zoom-caption p { font-size: 18px; line-height: 1.6; word-break: keep-all; margin-bottom: 14px; }
+  .zoom-nav { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .zoom-nav span { font-size: 16px; color: rgba(255,252,247,.75); min-width: 60px; }
+  .zoom-nav button {
+    border: 1.5px solid rgba(255,252,247,.5); border-radius: 999px;
+    background: transparent; color: #FFFcf7;
+    font-size: 17px; font-weight: 700; padding: 12px 22px;
+  }
   .gallery-img img { width: 100%; height: 100%; object-fit: cover; }
   .gallery-card figcaption {
     padding: 12px 14px 14px; font-size: 14px; color: var(--muted);
