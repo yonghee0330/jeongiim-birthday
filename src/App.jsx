@@ -50,14 +50,108 @@ function dayQuoteIndex() {
 }
 
 export default function App() {
+  const musicRef = useRef(null);
+  const [entered, setEntered] = useState(false);
+
+  // 시작 화면 버튼을 누르는 순간(브라우저가 허용하는 시점)에 소리를 켭니다
+  const enterWithMusic = () => {
+    if (musicRef.current) musicRef.current.startSound();
+    setEntered(true);
+  };
+  const enterQuiet = () => setEntered(true);
+
+  useEffect(() => {
+    document.body.style.overflow = entered ? "" : "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [entered]);
+
   // 음악 플레이어는 화면을 옮겨도 끊기지 않도록 페이지 밖에 둡니다
   return (
     <>
       <Page />
-      <MusicPlayer />
+      <MusicPlayer ref={musicRef} />
+      {!entered && <Welcome onEnter={enterWithMusic} onQuiet={enterQuiet} />}
     </>
   );
 }
+
+function Welcome({ onEnter, onQuiet }) {
+  const photo = PHOTOS[23] || PHOTOS[0];
+  return (
+    <div className="welcome" role="dialog" aria-modal="true" aria-label="시작 화면">
+      <style>{welcomeCss}</style>
+      <div className="welcome-card">
+        <div className="welcome-photo">
+          <img src={photo.src} alt="유정임" />
+        </div>
+        <p className="welcome-eyebrow">오늘 더 행복해</p>
+        <h1 className="welcome-title">유정임</h1>
+        <p className="welcome-sub">
+          좋아하시는 음악과 함께
+          <br />
+          천천히 둘러보세요
+        </p>
+        <button className="welcome-go" onClick={onEnter}>
+          🎵 음악과 함께 들어가기
+        </button>
+        <button className="welcome-quiet" onClick={onQuiet}>
+          소리 없이 들어가기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const welcomeCss = `
+  .welcome {
+    position: fixed; inset: 0; z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; overflow-y: auto;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 15%, rgba(232,196,196,.55), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 90% 10%, rgba(122,155,142,.3), transparent 50%),
+      linear-gradient(165deg, #F7F3EB 0%, #EFE8DC 45%, #E4EDE8 100%);
+  }
+  .welcome-card {
+    width: 100%; max-width: 420px; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    animation: fadeUp .7s ease both;
+  }
+  .welcome-photo {
+    width: 180px; height: 220px; border-radius: 28px; overflow: hidden;
+    border: 6px solid rgba(255,252,247,.95);
+    box-shadow: 0 12px 40px rgba(47,44,40,.14);
+    background: #EFE8DC; margin-bottom: 22px;
+  }
+  .welcome-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .welcome-eyebrow {
+    font-family: 'Gowun Batang', serif; font-size: 18px; color: #5F7F72; margin-bottom: 4px;
+  }
+  .welcome-title {
+    font-family: 'Gowun Batang', serif; font-size: 40px; font-weight: 700;
+    color: #2F2C28; margin-bottom: 12px; line-height: 1.3;
+  }
+  .welcome-sub {
+    font-size: 19px; line-height: 1.8; color: #6B6560;
+    word-break: keep-all; margin-bottom: 28px;
+  }
+  .welcome-go {
+    width: 100%; min-height: 64px; border: none; border-radius: 999px;
+    font-size: 21px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, #C98B84, #B5746C);
+    box-shadow: 0 12px 30px rgba(181,116,108,.35);
+    font-family: inherit; cursor: pointer;
+  }
+  .welcome-go:active { transform: scale(.98); }
+  .welcome-quiet {
+    margin-top: 14px; min-height: 52px; padding: 0 24px;
+    border: 1.5px solid rgba(122,155,142,.4); border-radius: 999px;
+    background: transparent; color: #6B6560;
+    font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+`;
 
 function Page() {
   const [view, setView] = useState("landing"); // landing | album | story | write

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 // 임영웅 노래 목록 (유튜브 영상 ID). 재생이 막힌 영상은 자동으로 건너뜁니다.
 // 곡을 바꾸려면 이 목록만 고치면 됩니다.
@@ -40,11 +40,27 @@ function loadYouTubeApi() {
   });
 }
 
-export default function MusicPlayer() {
+const MusicPlayer = forwardRef(function MusicPlayer(_props, ref) {
   const playerRef = useRef(null);
+  const pendingStartRef = useRef(false); // 플레이어 준비 전에 시작 버튼이 눌린 경우
   const [ready, setReady] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [title, setTitle] = useState("");
+
+  // 소리를 켜고 재생 (시작 화면 버튼에서 호출)
+  const startSound = () => {
+    const p = playerRef.current;
+    if (!p || !p.unMute) {
+      pendingStartRef.current = true;
+      return;
+    }
+    p.unMute();
+    p.setVolume(80);
+    p.playVideo();
+    setSoundOn(true);
+  };
+
+  useImperativeHandle(ref, () => ({ startSound }));
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +91,13 @@ export default function MusicPlayer() {
             }
             p.playVideo();
             setReady(true);
+            if (pendingStartRef.current) {
+              pendingStartRef.current = false;
+              p.unMute();
+              p.setVolume(80);
+              p.playVideo();
+              setSoundOn(true);
+            }
           },
           onStateChange: (e) => {
             const data = e.target.getVideoData && e.target.getVideoData();
@@ -145,7 +168,9 @@ export default function MusicPlayer() {
       <style>{musicCss}</style>
     </>
   );
-}
+});
+
+export default MusicPlayer;
 
 const musicCss = `
   .yt-hidden {
