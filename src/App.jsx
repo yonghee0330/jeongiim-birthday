@@ -9,6 +9,7 @@ import {
 } from "./firebase.js";
 import AlbumTab from "./AlbumTab.jsx";
 import StoryTab from "./StoryTab.jsx";
+import MusicPlayer from "./MusicPlayer.jsx";
 
 const C = {
   sage: "#7A9B8E",
@@ -49,6 +50,16 @@ function dayQuoteIndex() {
 }
 
 export default function App() {
+  // 음악 플레이어는 화면을 옮겨도 끊기지 않도록 페이지 밖에 둡니다
+  return (
+    <>
+      <Page />
+      <MusicPlayer />
+    </>
+  );
+}
+
+function Page() {
   const [view, setView] = useState("landing"); // landing | album | story | write
   const [menuOpen, setMenuOpen] = useState(false);
   const [quoteIdx, setQuoteIdx] = useState(dayQuoteIndex);
