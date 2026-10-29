@@ -39,7 +39,7 @@ export const auth = getAuth(app);
 
 const FAMILY_SESSION_KEY = "jeongiim_family_ok";
 /** 콘솔 settings/access.pin 이 없을 때 쓰는 기본값 — SETUP.md 참고 */
-const DEFAULT_FAMILY_PIN = "2026";
+const DEFAULT_FAMILY_PIN = "7777";
 
 export function isFamilyUnlocked() {
   return sessionStorage.getItem(FAMILY_SESSION_KEY) === "1";
