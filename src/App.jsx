@@ -10,6 +10,7 @@ import {
 import AlbumTab from "./AlbumTab.jsx";
 import StoryTab from "./StoryTab.jsx";
 import MusicPlayer from "./MusicPlayer.jsx";
+import SecretDoor from "./SecretDoor.jsx";
 
 const C = {
   sage: "#7A9B8E",
@@ -498,7 +499,7 @@ function Page() {
       </main>
 
       <footer className="site-footer">
-        <div>© 유정임 | 오늘 더 행복해. All rights reserved.</div>
+        <div>© 유정임 | 오늘 더 행복해. All rights reserved. <SecretDoor /></div>
       </footer>
 
       {zoomIdx !== null && galleryItems[zoomIdx] && (
